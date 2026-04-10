@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArcHost Control — Simple Host Flow</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="topbar card">
+      <div>
+        <h1>ArcHost Control</h1>
+        <p>MC Vanilla example — minimal host management flow</p>
+      </div>
+      <div class="topbar-actions">
+        <strong id="githubUser" class="user-pill">Not logged in</strong>
+        <button id="authActionBtn" class="btn">Login</button>
+        <span class="badge">Concept v2</span>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h2>1) Your servers</h2>
+        <p id="repoHint" class="muted">Log in to load instances.</p>
+        <a href="create/create.html" class="btn create-server-btn">Create Server</a>
+        <ul id="repoList" class="repo-list"></ul>
+      </article>
+
+      <article class="card">
+        <h2>2) Server</h2>
+        <div class="stat-row">
+          <span>Current host</span>
+          <strong id="hostName">No host</strong>
+        </div>
+        <div class="stat-row">
+          <span>Status</span>
+          <strong id="serverStatus">Stopped</strong>
+        </div>
+        <div class="stat-row">
+          <span>Selected instance</span>
+          <strong id="selectedRepo">None</strong>
+        </div>
+
+        <div class="action-row">
+          <button id="startServerBtn" class="btn primary">Start Server</button>
+          <button id="stopServerBtn" class="btn danger">Stop Server</button>
+        </div>
+
+        <p id="serverNote" class="muted note">No active host yet.</p>
+      </article>
+
+      <article id="hostPanel" class="card hidden">
+        <h2>Host Interface</h2>
+        <p class="muted">Visible only while you are the active host.</p>
+
+        <div class="stat-row">
+          <span>Build</span>
+          <strong id="buildId">-</strong>
+        </div>
+        <div class="stat-row">
+          <span>Last pull</span>
+          <strong id="lastPull">-</strong>
+        </div>
+        <div class="stat-row">
+          <span>Last upload/push</span>
+          <strong id="lastUpload">-</strong>
+        </div>
+        <div class="stat-row">
+          <span>Uptime</span>
+          <strong id="uptime">0m 00s</strong>
+        </div>
+      </article>
+
+      <article class="card full-width">
+        <h2>Activity</h2>
+        <ol id="activityLog" class="activity-log"></ol>
+      </article>
+    </section>
+  </main>
+
+  <div id="loginModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+    <div class="modal card">
+      <h2 id="loginModalTitle">Login required</h2>
+      <p class="muted">Launch flow: connect with GitHub first, then choose your contributor repo.</p>
+      <button id="popupLoginBtn" class="btn primary">Login with GitHub</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

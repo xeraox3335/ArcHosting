@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArcHost Control — Create Server</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="create.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="topbar card">
+      <div>
+        <h1>Create Server</h1>
+        <p>Generate a GitHub repository and auto-setup the server project</p>
+      </div>
+      <div class="topbar-actions">
+        <a href="../index.html" class="btn">Back to dashboard</a>
+        <span class="badge">Create flow</span>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Repository setup</h2>
+        <div class="field">
+          <label for="serverName">Server name</label>
+          <input id="serverName" class="input" type="text" placeholder="Example: MC Vanilla Season 2" />
+        </div>
+
+        <div class="field">
+          <label for="visibility">Repository visibility</label>
+          <select id="visibility" class="input">
+            <option value="private" selected>Private</option>
+            <option value="internal">Internal</option>
+            <option value="public">Public</option>
+          </select>
+        </div>
+
+        <p class="muted helper-line">Repository slug preview: <strong id="repoSlugPreview">new-server</strong></p>
+      </article>
+
+      <article class="card">
+        <h2>File manager</h2>
+        <p class="muted">Choose a starter preset, then manage folders/files directly.</p>
+
+        <div class="row manager-row">
+          <select id="starterPreset" class="input">
+            <option value="vanilla-basic">Vanilla Basic preset</option>
+            <option value="vanilla-performance">Vanilla Performance preset</option>
+            <option value="empty">Empty project</option>
+          </select>
+          <button id="applyPresetBtn" class="btn" type="button">Apply preset</button>
+        </div>
+
+        <p class="muted helper-line">Current folder: <strong id="currentFolder">/</strong></p>
+
+        <div class="manager-actions">
+          <button id="newFolderBtn" type="button" class="btn">New folder</button>
+          <button id="newFileBtn" type="button" class="btn">New file</button>
+          <label for="uploadFiles" class="btn">Upload files</label>
+          <input id="uploadFiles" type="file" multiple class="hidden-input" />
+        </div>
+
+        <div id="fileManagerTree" class="file-tree"></div>
+      </article>
+
+      <article class="card">
+        <h2>Add GitHub users</h2>
+        <p class="muted">Invite collaborators that should have access to this repository.</p>
+        <div class="row">
+          <input id="collaboratorInput" class="input" type="text" placeholder="GitHub username" />
+          <button id="addCollaboratorBtn" class="btn" type="button">Add user</button>
+        </div>
+        <ul id="collaboratorList" class="tag-list"></ul>
+      </article>
+
+      <article class="card full-width">
+        <h2>Auto setup</h2>
+        <p class="muted">Create will initialize a repository, commit the managed file tree, invite collaborators, and finish setup automatically.</p>
+        <div class="create-actions">
+          <button id="createRepoBtn" type="button" class="btn primary">Create repository + auto setup</button>
+          <a href="index.html" class="btn">Cancel</a>
+        </div>
+        <p id="createStatus" class="muted"></p>
+        <ol id="createLog" class="activity-log"></ol>
+      </article>
+    </section>
+  </main>
+
+  <script src="create.js"></script>
+</body>
+</html>
