@@ -79,6 +79,7 @@
         <h2>Create Server</h2>
         <p class="muted">Create will initialize a repository, commit the managed file tree, invite collaborators, and finish setup automatically.</p>
         <div class="create-actions">
+          <button id="resetFormBtn" type="button" class="btn">Reset form</button>
           <button id="createRepoBtn" type="button" class="btn primary">Create repository + auto setup</button>
           <a href="../index.html" class="btn">Cancel</a>
         </div>
@@ -88,6 +89,8 @@
     </section>
   </main>
 
+  <script src="../api/client.js"></script>
+  <script src="create-helpers.js"></script>
   <script src="create.js"></script>
 </body>
 </html>

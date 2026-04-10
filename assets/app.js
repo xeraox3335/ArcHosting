@@ -10,7 +10,7 @@ const mockRepos = [
   { name: 'mc-vanilla-backups', role: 'Contributor' },
 ];
 
-const createdServersKey = 'arc-created-servers';
+const createdServersKey = window.ArcApi?.keys?.createdServers || 'arc-created-servers';
 const MAX_ACTIVITY_LOG_ENTRIES = 12;
 
 const initialState = {
@@ -35,6 +35,7 @@ const initialState = {
 const storageKey = 'arc-control-simple-v2';
 let state = loadState();
 let uptimeTickerId = null;
+let authPending = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -85,6 +86,10 @@ function saveState() {
 }
 
 function loadCreatedServers() {
+  if (typeof window.ArcApi?.loadCreatedServers === 'function') {
+    return window.ArcApi.loadCreatedServers();
+  }
+
   try {
     const raw = localStorage.getItem(createdServersKey);
     const parsed = raw ? JSON.parse(raw) : [];
@@ -95,6 +100,10 @@ function loadCreatedServers() {
 }
 
 function getAvailableRepos() {
+  if (typeof window.ArcApi?.getAvailableRepos === 'function') {
+    return window.ArcApi.getAvailableRepos();
+  }
+
   const createdRepos = loadCreatedServers().map((server) => ({
     name: server.name,
     role: server.role || 'Owner',
@@ -156,11 +165,57 @@ function performPull(reason = 'Pull') {
 
 function renderAuth() {
   el.githubUser.textContent = state.loggedIn && state.user ? `${state.user.name} (${state.user.handle})` : 'Not logged in';
-  el.authActionBtn.textContent = state.loggedIn ? 'Logout' : 'Login';
+  if (authPending && !state.loggedIn) {
+    el.authActionBtn.textContent = 'Connecting...';
+  } else {
+    el.authActionBtn.textContent = state.loggedIn ? 'Logout' : 'Login';
+  }
+  el.authActionBtn.disabled = authPending;
 }
 
 function renderLoginModal() {
   el.loginModal.classList.toggle('hidden', state.loggedIn);
+  el.popupLoginBtn.disabled = authPending;
+  el.popupLoginBtn.textContent = authPending ? 'Connecting to GitHub...' : 'Login with GitHub';
+}
+
+function selectRepo(repoName) {
+  state.selectedRepo = repoName;
+  addLog(`Selected repo: ${repoName}.`);
+  syncAll();
+}
+
+function focusRepoButtonAt(index) {
+  const buttons = [...el.repoList.querySelectorAll('.repo-item')];
+  if (!buttons.length) return;
+
+  const boundedIndex = Math.max(0, Math.min(index, buttons.length - 1));
+  buttons[boundedIndex].focus();
+}
+
+function handleRepoItemKeydown(event, index) {
+  switch (event.key) {
+    case 'ArrowDown':
+    case 'ArrowRight':
+      event.preventDefault();
+      focusRepoButtonAt(index + 1);
+      return;
+    case 'ArrowUp':
+    case 'ArrowLeft':
+      event.preventDefault();
+      focusRepoButtonAt(index - 1);
+      return;
+    case 'Home':
+      event.preventDefault();
+      focusRepoButtonAt(0);
+      return;
+    case 'End':
+      event.preventDefault();
+      focusRepoButtonAt(Number.MAX_SAFE_INTEGER);
+      return;
+    default:
+      return;
+  }
 }
 
 function renderRepos() {
@@ -176,15 +231,20 @@ function renderRepos() {
     return;
   }
 
-  el.repoHint.textContent = 'Click a repository to target this server instance.';
+  el.repoHint.textContent = 'Click a repository (or use arrow keys on a focused repo button) to target this server instance.';
 
   const fragment = document.createDocumentFragment();
 
-  state.repos.forEach((repo) => {
+  state.repos.forEach((repo, index) => {
     const item = document.createElement('li');
     const button = document.createElement('button');
+    const isActive = state.selectedRepo === repo.name;
+
     button.type = 'button';
-    button.className = `repo-item ${state.selectedRepo === repo.name ? 'active' : ''}`;
+    button.className = `repo-item ${isActive ? 'active' : ''}`;
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    button.setAttribute('aria-label', `${repo.name} (${repo.role})`);
+
     const title = document.createElement('strong');
     title.textContent = repo.name;
 
@@ -194,11 +254,9 @@ function renderRepos() {
 
     button.appendChild(title);
     button.appendChild(meta);
-    button.addEventListener('click', () => {
-      state.selectedRepo = repo.name;
-      addLog(`Selected repo: ${repo.name}.`);
-      syncAll();
-    });
+    button.addEventListener('click', () => selectRepo(repo.name));
+    button.addEventListener('keydown', (event) => handleRepoItemKeydown(event, index));
+
     item.appendChild(button);
     fragment.appendChild(item);
   });
@@ -259,6 +317,10 @@ function renderUptime() {
   el.uptime.textContent = formatDuration(state.server.startedAt);
 }
 
+function shouldRunUptimeTicker() {
+  return Boolean(state.server.running && isCurrentUserHost() && state.server.startedAt);
+}
+
 function renderLogs() {
   el.activityLog.replaceChildren();
 
@@ -284,14 +346,15 @@ function renderLogs() {
 function startUptimeTicker() {
   if (uptimeTickerId !== null) return;
 
-  uptimeTickerId = setInterval(() => {
-    if (!(state.server.running && isCurrentUserHost())) {
-      stopUptimeTicker();
-      renderUptime();
-      return;
-    }
-
+  if (!shouldRunUptimeTicker()) {
     renderUptime();
+    return;
+  }
+
+  renderUptime();
+
+  uptimeTickerId = setInterval(() => {
+    el.uptime.textContent = formatDuration(state.server.startedAt);
   }, 1000);
 }
 
@@ -311,27 +374,45 @@ function syncAll() {
   renderHostPanel();
   renderLogs();
 
-  if (state.server.running && isCurrentUserHost()) {
+  if (shouldRunUptimeTicker()) {
     startUptimeTicker();
   } else {
     stopUptimeTicker();
+    renderUptime();
   }
 
   saveState();
 }
 
-function loginWithGithub() {
-  if (state.loggedIn) {
+async function loginWithGithub() {
+  if (state.loggedIn || authPending) {
     syncAll();
     return;
   }
 
-  state.loggedIn = true;
-  state.user = mockUser;
-  state.repos = getAvailableRepos();
-  state.selectedRepo = state.selectedRepo ?? state.repos[0]?.name ?? null;
-  addLog('GitHub login successful. Contributor repositories loaded.');
+  authPending = true;
   syncAll();
+
+  try {
+    const result = typeof window.ArcApi?.loginWithGithub === 'function'
+      ? await window.ArcApi.loginWithGithub()
+      : { user: mockUser };
+
+    const repos = typeof window.ArcApi?.listRepos === 'function'
+      ? await window.ArcApi.listRepos()
+      : getAvailableRepos();
+
+    state.loggedIn = true;
+    state.user = result?.user || mockUser;
+    state.repos = Array.isArray(repos) ? repos : getAvailableRepos();
+    state.selectedRepo = state.selectedRepo ?? state.repos[0]?.name ?? null;
+    addLog('GitHub login successful. Contributor repositories loaded.');
+  } catch {
+    addLog('GitHub login failed. Please try again.');
+  } finally {
+    authPending = false;
+    syncAll();
+  }
 }
 
 function logoutFromGithub() {
@@ -353,6 +434,10 @@ function logoutFromGithub() {
 }
 
 function handleAuthAction() {
+  if (authPending) {
+    return;
+  }
+
   if (state.loggedIn) {
     logoutFromGithub();
     return;
@@ -411,7 +496,9 @@ function stopServer(options = {}) {
 
 function wireEvents() {
   el.authActionBtn.addEventListener('click', handleAuthAction);
-  el.popupLoginBtn.addEventListener('click', loginWithGithub);
+  el.popupLoginBtn.addEventListener('click', () => {
+    void loginWithGithub();
+  });
   el.startServerBtn.addEventListener('click', startServer);
   el.stopServerBtn.addEventListener('click', () => stopServer({ reason: 'Stop server' }));
 }

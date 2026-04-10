@@ -1,12 +1,13 @@
 {
-  "name": "arc-control-desktop",
+  "name": "arc-hosting_control-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Arc Control desktop prototype using Electron",
+  "description": "ArcHosting Control desktop prototype using Electron",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "test": "node --test"
   },
   "devDependencies": {
     "electron": "^31.7.7"

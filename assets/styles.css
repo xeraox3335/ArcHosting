@@ -179,6 +179,12 @@ h2 {
   background: rgba(120, 146, 255, 0.22);
 }
 
+.repo-item:focus-visible {
+  outline: 2px solid rgba(120, 146, 255, 0.9);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
 .repo-meta {
   margin-top: 4px;
   color: var(--muted);

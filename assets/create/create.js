@@ -14,6 +14,7 @@ const el = {
   collaboratorInput: document.getElementById('collaboratorInput'),
   addCollaboratorBtn: document.getElementById('addCollaboratorBtn'),
   collaboratorList: document.getElementById('collaboratorList'),
+  resetFormBtn: document.getElementById('resetFormBtn'),
   createRepoBtn: document.getElementById('createRepoBtn'),
   createStatus: document.getElementById('createStatus'),
   createLog: document.getElementById('createLog'),
@@ -24,6 +25,8 @@ const state = {
   selectedFolder: '/',
   fileEntries: [],
 };
+
+let createPending = false;
 
 const presets = {
   'vanilla-basic': [
@@ -44,7 +47,13 @@ const presets = {
   empty: [],
 };
 
+const createHelpers = window.ArcCreateHelpers || {};
+
 function loadCreatedServers() {
+  if (typeof window.ArcApi?.loadCreatedServers === 'function') {
+    return window.ArcApi.loadCreatedServers();
+  }
+
   try {
     const raw = localStorage.getItem(CREATED_SERVERS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
@@ -55,23 +64,50 @@ function loadCreatedServers() {
 }
 
 function saveCreatedServers(servers) {
+  if (typeof window.ArcApi?.saveCreatedServers === 'function') {
+    window.ArcApi.saveCreatedServers(servers);
+    return;
+  }
+
   localStorage.setItem(CREATED_SERVERS_KEY, JSON.stringify(servers));
 }
 
-function slugify(value) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 63);
+const slugify = createHelpers.slugify || ((value) => value
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .slice(0, 63));
+
+const isValidGitHubUsername = createHelpers.isValidGitHubUsername || ((value) => /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i.test(value));
+
+const INVALID_PATH_CHAR_PATTERN = /[<>:"|?*\u0000-\u001F]/;
+
+function validateServerName(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return 'Please enter a server name.';
+  if (trimmed.length > 80) return 'Server name must be 80 characters or fewer.';
+  if (!slugify(trimmed)) return 'Server name must include letters or numbers.';
+  return '';
 }
 
-function isValidGitHubUsername(value) {
-  return /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i.test(value);
+function validateManualEntryName(value, label) {
+  const trimmed = value.trim();
+  if (!trimmed) return `${label} cannot be empty.`;
+
+  const segments = normalizePath(trimmed).split('/');
+  if (segments.some((segment) => !segment || segment === '.' || segment === '..')) {
+    return `${label} cannot contain "." or ".." path segments.`;
+  }
+
+  if (segments.some((segment) => INVALID_PATH_CHAR_PATTERN.test(segment))) {
+    return `${label} contains invalid characters.`;
+  }
+
+  return '';
 }
 
-function getRepoName(baseName, existing) {
+const getRepoName = createHelpers.getRepoName || ((baseName, existing) => {
   const existingSet = new Set(existing);
   if (!existingSet.has(baseName)) return baseName;
 
@@ -82,7 +118,7 @@ function getRepoName(baseName, existing) {
     next = `${baseName}-${idx}`;
   }
   return next;
-}
+});
 
 function addLog(message) {
   const li = document.createElement('li');
@@ -103,19 +139,17 @@ function clearLog() {
   el.createLog.innerHTML = '';
 }
 
-function normalizePath(path) {
-  return path
-    .replace(/\\/g, '/')
-    .replace(/^\/+|\/+$/g, '')
-    .replace(/\/+/g, '/');
-}
+const normalizePath = createHelpers.normalizePath || ((path) => path
+  .replace(/\\/g, '/')
+  .replace(/^\/+|\/+$/g, '')
+  .replace(/\/+/g, '/'));
 
-function joinPath(folder, name) {
+const joinPath = createHelpers.joinPath || ((folder, name) => {
   const cleanName = normalizePath(name);
   if (!cleanName) return '';
   if (!folder || folder === '/') return cleanName;
   return `${normalizePath(folder)}/${cleanName}`;
-}
+});
 
 function parentPath(path) {
   const normalized = normalizePath(path);
@@ -358,6 +392,15 @@ function addCollaborator() {
   renderCollaborators();
 }
 
+function setCreatePending(next) {
+  createPending = next;
+  el.createRepoBtn.disabled = next;
+  el.resetFormBtn.disabled = next;
+  el.createRepoBtn.textContent = next
+    ? 'Creating repository...'
+    : 'Create repository + auto setup';
+}
+
 function handleFileUpload(event) {
   const selectedFolder = state.selectedFolder || '/';
   [...event.target.files].forEach((file) => {
@@ -372,6 +415,12 @@ function handleFileUpload(event) {
 function createFolder() {
   const name = window.prompt('Folder name');
   if (!name) return;
+
+  const validationError = validateManualEntryName(name, 'Folder name');
+  if (validationError) {
+    el.createStatus.textContent = validationError;
+    return;
+  }
 
   const path = joinPath(state.selectedFolder, name);
   if (!path) return;
@@ -391,6 +440,12 @@ function createFile() {
   const name = window.prompt('File name (example: notes.txt)');
   if (!name) return;
 
+  const validationError = validateManualEntryName(name, 'File name');
+  if (validationError) {
+    el.createStatus.textContent = validationError;
+    return;
+  }
+
   const path = joinPath(state.selectedFolder, name);
   if (!path) return;
 
@@ -403,11 +458,14 @@ function createFile() {
   el.createStatus.textContent = '';
 }
 
-function createRepository() {
+async function createRepository() {
+  if (createPending) return;
+
   const serverName = el.serverName.value.trim();
 
-  if (!serverName) {
-    el.createStatus.textContent = 'Please enter a server name.';
+  const serverNameError = validateServerName(serverName);
+  if (serverNameError) {
+    el.createStatus.textContent = serverNameError;
     return;
   }
 
@@ -443,26 +501,59 @@ function createRepository() {
     if (entry.source === 'upload') payload.uploadedFiles.push(entry.path);
   });
 
-  saveCreatedServers([...existing, payload]);
+  setCreatePending(true);
+  el.createStatus.textContent = 'Creating repository and applying setup...';
+
+  try {
+    if (typeof window.ArcApi?.createRepository === 'function') {
+      await window.ArcApi.createRepository(payload);
+    } else {
+      saveCreatedServers([...existing, payload]);
+    }
+
+    clearLog();
+    addLog(`Created GitHub repository ${repoName} (${payload.visibility}).`);
+    addLog(`Initialized repository and committed ${payload.files.length} file(s).`);
+
+    if (payload.uploadedFiles.length) {
+      addLog(`Uploaded ${payload.uploadedFiles.length} file(s) from your device.`);
+    } else {
+      addLog('No local uploads selected.');
+    }
+
+    if (payload.collaborators.length) {
+      addLog(`Invited collaborators: ${payload.collaborators.map((name) => `@${name}`).join(', ')}.`);
+    } else {
+      addLog('No collaborators added at creation time.');
+    }
+
+    addLog('Auto setup complete. Repository is ready to host.');
+    el.createStatus.textContent = `Done: ${repoName} has been created and configured.`;
+  } catch {
+    addLog('Repository creation failed. Please retry.');
+    el.createStatus.textContent = 'Repository creation failed. Please try again.';
+  } finally {
+    setCreatePending(false);
+  }
+}
+
+function resetCreateForm() {
+  if (createPending) return;
+
+  state.collaborators = [];
+  state.selectedFolder = '/';
+
+  el.serverName.value = '';
+  el.visibility.value = 'private';
+  el.starterPreset.value = 'vanilla-basic';
+  el.collaboratorInput.value = '';
+  el.uploadFiles.value = '';
 
   clearLog();
-  addLog(`Created GitHub repository ${repoName} (${payload.visibility}).`);
-  addLog(`Initialized repository and committed ${payload.files.length} file(s).`);
-
-  if (payload.uploadedFiles.length) {
-    addLog(`Uploaded ${payload.uploadedFiles.length} file(s) from your device.`);
-  } else {
-    addLog('No local uploads selected.');
-  }
-
-  if (payload.collaborators.length) {
-    addLog(`Invited collaborators: ${payload.collaborators.map((name) => `@${name}`).join(', ')}.`);
-  } else {
-    addLog('No collaborators added at creation time.');
-  }
-
-  addLog('Auto setup complete. Repository is ready to host.');
-  el.createStatus.textContent = `Done: ${repoName} has been created and configured.`;
+  renderCollaborators();
+  refreshSlugPreview();
+  applyPreset();
+  el.createStatus.textContent = 'Form reset. Default preset applied.';
 }
 
 function wireEvents() {
@@ -471,6 +562,7 @@ function wireEvents() {
   el.newFolderBtn.addEventListener('click', createFolder);
   el.newFileBtn.addEventListener('click', createFile);
   el.addCollaboratorBtn.addEventListener('click', addCollaborator);
+  el.resetFormBtn.addEventListener('click', resetCreateForm);
   el.collaboratorInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -478,7 +570,9 @@ function wireEvents() {
     }
   });
   el.uploadFiles.addEventListener('change', handleFileUpload);
-  el.createRepoBtn.addEventListener('click', createRepository);
+  el.createRepoBtn.addEventListener('click', () => {
+    void createRepository();
+  });
 }
 
 wireEvents();
