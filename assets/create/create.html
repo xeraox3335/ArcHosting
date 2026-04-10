@@ -12,24 +12,24 @@
     <header class="topbar card">
       <div>
         <h1>Create Server</h1>
-        <p>Generate a GitHub repository and auto-setup the server project</p>
+        <p>Generate a Project and auto-setup the server files</p>
       </div>
       <div class="topbar-actions">
         <a href="../index.html" class="btn">Back to dashboard</a>
-        <span class="badge">Create flow</span>
+        <span class="badge">Create Server</span>
       </div>
     </header>
 
     <section class="grid">
       <article class="card">
-        <h2>Repository setup</h2>
+        <h2>Project setup</h2>
         <div class="field">
           <label for="serverName">Server name</label>
           <input id="serverName" class="input" type="text" placeholder="Example: MC Vanilla Season 2" />
         </div>
 
         <div class="field">
-          <label for="visibility">Repository visibility</label>
+          <label for="visibility">Project visibility</label>
           <select id="visibility" class="input">
             <option value="private" selected>Private</option>
             <option value="internal">Internal</option>
@@ -37,7 +37,7 @@
           </select>
         </div>
 
-        <p class="muted helper-line">Repository slug preview: <strong id="repoSlugPreview">new-server</strong></p>
+        <p class="muted helper-line">Project slug preview: <strong id="repoSlugPreview">new-server</strong></p>
       </article>
 
       <article class="card">
@@ -76,11 +76,11 @@
       </article>
 
       <article class="card full-width">
-        <h2>Auto setup</h2>
+        <h2>Create Server</h2>
         <p class="muted">Create will initialize a repository, commit the managed file tree, invite collaborators, and finish setup automatically.</p>
         <div class="create-actions">
           <button id="createRepoBtn" type="button" class="btn primary">Create repository + auto setup</button>
-          <a href="index.html" class="btn">Cancel</a>
+          <a href="../index.html" class="btn">Cancel</a>
         </div>
         <p id="createStatus" class="muted"></p>
         <ol id="createLog" class="activity-log"></ol>

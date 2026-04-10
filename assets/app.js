@@ -164,7 +164,7 @@ function renderLoginModal() {
 }
 
 function renderRepos() {
-  el.repoList.innerHTML = '';
+  el.repoList.replaceChildren();
 
   if (!state.loggedIn) {
     el.repoHint.textContent = 'Log in to load repositories.';
@@ -203,7 +203,7 @@ function renderRepos() {
     fragment.appendChild(item);
   });
 
-  el.repoList.appendChild(fragment);
+  el.repoList.replaceChildren(fragment);
 }
 
 function renderServer() {
@@ -252,11 +252,15 @@ function renderHostPanel() {
   el.buildId.textContent = state.server.buildId || '-';
   el.lastPull.textContent = formatDate(state.server.lastSync);
   el.lastUpload.textContent = formatDate(state.server.lastUpload);
+  renderUptime();
+}
+
+function renderUptime() {
   el.uptime.textContent = formatDuration(state.server.startedAt);
 }
 
 function renderLogs() {
-  el.activityLog.innerHTML = '';
+  el.activityLog.replaceChildren();
 
   const fragment = document.createDocumentFragment();
   state.logs.forEach((entry) => {
@@ -274,20 +278,20 @@ function renderLogs() {
     fragment.appendChild(li);
   });
 
-  el.activityLog.appendChild(fragment);
+  el.activityLog.replaceChildren(fragment);
 }
 
 function startUptimeTicker() {
   if (uptimeTickerId !== null) return;
 
   uptimeTickerId = setInterval(() => {
-    if (!state.server.running) {
+    if (!(state.server.running && isCurrentUserHost())) {
       stopUptimeTicker();
+      renderUptime();
       return;
     }
 
-    renderServer();
-    renderHostPanel();
+    renderUptime();
   }, 1000);
 }
 
@@ -307,7 +311,7 @@ function syncAll() {
   renderHostPanel();
   renderLogs();
 
-  if (state.server.running) {
+  if (state.server.running && isCurrentUserHost()) {
     startUptimeTicker();
   } else {
     stopUptimeTicker();

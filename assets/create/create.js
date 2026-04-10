@@ -173,7 +173,7 @@ function removeEntry(path) {
 }
 
 function renderCollaborators() {
-  el.collaboratorList.innerHTML = '';
+  el.collaboratorList.replaceChildren();
 
   const fragment = document.createDocumentFragment();
   state.collaborators.forEach((username, index) => {
@@ -196,7 +196,7 @@ function renderCollaborators() {
     fragment.appendChild(li);
   });
 
-  el.collaboratorList.appendChild(fragment);
+  el.collaboratorList.replaceChildren(fragment);
 }
 
 function buildTreeModel() {
@@ -294,14 +294,14 @@ function createFileNode(name, fullPath) {
 }
 
 function renderFileTree() {
-  el.fileManagerTree.innerHTML = '';
+  el.fileManagerTree.replaceChildren();
   el.currentFolder.textContent = state.selectedFolder || '/';
 
   if (!state.fileEntries.length) {
     const empty = document.createElement('p');
     empty.className = 'node-empty';
     empty.textContent = 'No files yet. Apply a preset, add files/folders, or upload files.';
-    el.fileManagerTree.appendChild(empty);
+    el.fileManagerTree.replaceChildren(empty);
     return;
   }
 
@@ -315,7 +315,7 @@ function renderFileTree() {
     rootUl.appendChild(createFileNode(file, file));
   });
 
-  el.fileManagerTree.appendChild(rootUl);
+  el.fileManagerTree.replaceChildren(rootUl);
 }
 
 function refreshSlugPreview() {

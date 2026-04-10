@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ArcHost Control — Simple Host Flow</title>
+  <title>ArcHosting — Control Panel</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="app">
     <header class="topbar card">
       <div>
-        <h1>ArcHost Control</h1>
-        <p>MC Vanilla example — minimal host management flow</p>
+        <h1>ArcHosting — Control Panel</h1>
+        <p>Hosting made easy</p>
       </div>
       <div class="topbar-actions">
         <strong id="githubUser" class="user-pill">Not logged in</strong>
         <button id="authActionBtn" class="btn">Login</button>
-        <span class="badge">Concept v2</span>
+        <span class="badge">BETA - Concept v2</span>
       </div>
     </header>
 
@@ -56,15 +56,15 @@
         <p class="muted">Visible only while you are the active host.</p>
 
         <div class="stat-row">
-          <span>Build</span>
+          <span>Version</span>
           <strong id="buildId">-</strong>
         </div>
         <div class="stat-row">
-          <span>Last pull</span>
+          <span>Last Download</span>
           <strong id="lastPull">-</strong>
         </div>
         <div class="stat-row">
-          <span>Last upload/push</span>
+          <span>Last Upload</span>
           <strong id="lastUpload">-</strong>
         </div>
         <div class="stat-row">
@@ -74,7 +74,7 @@
       </article>
 
       <article class="card full-width">
-        <h2>Activity</h2>
+        <h2>Log</h2>
         <ol id="activityLog" class="activity-log"></ol>
       </article>
     </section>
